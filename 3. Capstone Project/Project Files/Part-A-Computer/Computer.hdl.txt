@@ -1,0 +1,10 @@
+// Complete Hack computer.
+CHIP Computer {
+    IN reset;
+
+    PARTS:
+    ROM32K(address=pc, out=instruction);
+    CPU(inM=memoryOut, instruction=instruction, reset=reset,
+        outM=memoryIn, writeM=writeM, addressM=memoryAddress, pc=pc);
+    Memory(in=memoryIn, load=writeM, address=memoryAddress, out=memoryOut);
+}

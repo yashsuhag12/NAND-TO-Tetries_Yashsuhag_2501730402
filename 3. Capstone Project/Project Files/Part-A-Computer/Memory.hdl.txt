@@ -1,0 +1,24 @@
+// Hack memory map: RAM16K, Screen, Keyboard.
+CHIP Memory {
+    IN in[16], load, address[15];
+    OUT out[16];
+
+    PARTS:
+    // address[14]=0 selects RAM; address[14]=1 selects screen/keyboard.
+    Not(in=address[14], out=ramSelect);
+    And(a=load, b=ramSelect, out=ramLoad);
+    RAM16K(in=in, load=ramLoad, address=address[0..13], out=ramOut);
+
+    // Within the upper half, address[13]=0 is Screen and address[13]=1 is Keyboard.
+    And(a=load, b=address[14], out=upperLoad);
+    Not(in=address[13], out=screenSelect);
+    And(a=upperLoad, b=screenSelect, out=screenLoad);
+    Screen(in=in, load=screenLoad, address=address[0..12], out=screenOut);
+
+    Keyboard(out=keyboardOut);
+
+    Mux16(a=ramOut, b=screenOut, sel=address[14], out=ramOrScreen);
+    // For 0x6000 and above, expose the keyboard register.
+    Mux16(a=ramOrScreen, b=keyboardOut, sel=address[13], out=upperOrKeyboard);
+    Mux16(a=ramOut, b=upperOrKeyboard, sel=address[14], out=out);
+}

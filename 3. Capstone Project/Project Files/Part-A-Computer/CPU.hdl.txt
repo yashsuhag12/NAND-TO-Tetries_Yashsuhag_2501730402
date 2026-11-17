@@ -1,0 +1,44 @@
+// Hack CPU for Nand2Tetris
+CHIP CPU {
+    IN inM[16], instruction[16], reset;
+    OUT outM[16], writeM, addressM[15], pc[15];
+
+    PARTS:
+    // Decode instruction type and destination bits.
+    Not(in=instruction[15], out=isA);
+    And(a=instruction[15], b=instruction[5], out=cDestA);
+    Or(a=isA, b=cDestA, out=loadA);
+    And(a=instruction[15], b=instruction[4], out=loadD);
+
+    // A register input: A-instruction constant or ALU result.
+    Mux16(a=instruction, b=outM, sel=instruction[15], out=aIn);
+    Register(in=aIn, load=loadA, out=aReg, out[0..14]=addressM);
+
+    // ALU y input is A or M, selected by the a-bit.
+    Mux16(a=aReg, b=inM, sel=instruction[12], out=aluY);
+    Register(in=outM, load=loadD, out=dReg);
+
+    ALU(x=dReg, y=aluY,
+        zx=instruction[11], nx=instruction[10],
+        zy=instruction[9], ny=instruction[8],
+        f=instruction[7], no=instruction[6],
+        out=outM, zr=zr, ng=ng);
+
+    // Memory interface.
+    And(a=instruction[15], b=instruction[3], out=writeM);
+    
+    
+
+    // Jump condition: (negative & JLT) | (zero & JEQ) | (positive & JGT).
+    Not(in=ng, out=notNegative);
+    Not(in=zr, out=notZero);
+    And(a=notNegative, b=notZero, out=positive);
+    And(a=ng, b=instruction[2], out=takeLT);
+    And(a=zr, b=instruction[1], out=takeEQ);
+    And(a=positive, b=instruction[0], out=takeGT);
+    Or(a=takeLT, b=takeEQ, out=jumpPart1);
+    Or(a=jumpPart1, b=takeGT, out=jumpCondition);
+    And(a=instruction[15], b=jumpCondition, out=pcLoad);
+
+    PC(in=aReg, load=pcLoad, inc=true, reset=reset, out[0..14]=pc);
+}
